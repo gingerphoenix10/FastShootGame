@@ -1,0 +1,47 @@
+using Riptide;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Player : MonoBehaviour
+{
+    public static Dictionary<ushort, Player> list = new Dictionary<ushort, Player>();
+
+    public ushort Id { get; private set; }
+    public bool isLocal { get; private set; }
+
+    private string username;
+
+    void OnDestroy()
+    {
+        list.Remove(Id);
+    }
+
+    public static void Spawn(ushort id, string username, Vector3 position)
+    {
+        Player player;
+        if (id == NetworkManager.Singleton.client.Id)
+        {
+            player = Instantiate(GameLogic.Singleton.LocalPlayerPrefab, position, Quaternion.identity).GetComponent<Player>();
+            player.isLocal = true;
+        }
+        else
+        {
+            player = Instantiate(GameLogic.Singleton.PlayerPrefab, position, Quaternion.identity).GetComponent<Player>();
+            player.isLocal = false;
+        }
+
+        player.name = $"Player {id} ({(string.IsNullOrEmpty(username) ? "Guest" : username)})";
+        player.Id = id;
+        player.username = username;
+
+        list.Add(id, player);
+    }
+
+    [MessageHandler((ushort)ServerToClientId.playerSpawned)]
+
+    private static void SpawnPlayer(Message message)
+    {
+        Spawn(message.GetUShort(), message.GetString(), message.GetVector3());
+    }
+
+}
